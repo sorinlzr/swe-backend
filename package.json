@@ -1,0 +1,24 @@
+{
+  "name": "swe-backend",
+  "version": "1.0.0",
+  "description": "Backend server for the Software Engineering project at the FH Campus Wien",
+  "main": "src/index.ts",
+  "scripts": {
+    "build": "rimraf ./build && tsc",
+    "start": "node src/index.ts",
+    "dev": "npx tsx watch --clear-screen=false src/index.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "ljahn, slazar, mleitgeb",
+  "license": "GPL-3.0-or-later",
+  "dependencies": {
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.9.4",
+    "rimraf": "^5.0.5",
+    "tsx": "^4.2.0",
+    "typescript": "^5.3.2"
+  }
+}
