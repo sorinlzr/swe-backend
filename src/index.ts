@@ -1,9 +1,10 @@
-import { connectToDatabase, initializeCategories } from './config/dbconnection';
-import cors from "cors";
-import bodyParser from 'body-parser';
 import express from "express";
 import 'dotenv/config'
+import cors from "cors";
+import bodyParser from 'body-parser';
+import { connectToDatabase, initializeCategories } from './config/dbconnection';
 import userRouter from './routers/userRouter';
+import categoryRouter from './routers/CategoryRouter';
 
 const port = process.env.SWE_BACKEND_PORT || 5000;
 const corsOptions = {
@@ -20,6 +21,7 @@ app.get("/", function (request: any, response: any) {
 })
 
 app.use("/api/users", userRouter);
+app.use("/api/categories", categoryRouter);
 
 app.listen(port, () => {
     console.log(`Now listening on port ${port}`);
