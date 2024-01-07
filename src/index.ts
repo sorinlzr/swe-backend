@@ -1,4 +1,4 @@
-import { connectToDatabase } from './config/dbconnection';
+import { connectToDatabase, initializeCategories } from './config/dbconnection';
 import cors from "cors";
 import bodyParser from 'body-parser';
 import express from "express";
@@ -27,6 +27,7 @@ app.listen(port, () => {
 
 async function main() {
     connectToDatabase();
+    initializeCategories();
 }
 
 main();
