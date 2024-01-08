@@ -30,6 +30,8 @@ Before starting the containers you need to add some necessary environment variab
 Set the following environment variables in a `.env` file in the root project folder:
 ```
 SWE_BACKEND_PORT            - the backend application server port. If not set it defaults to 5000
+JWT_SECRET                  - the secret used to generate the JWT token
+JWT_MAX_AGE                 - the expiration time of the token. Also used for the cookie maxAge
 MONGO_ROOT_USER             - the db user
 MONGO_ROOT_PASSWORD         - the db password
 MONGO_HOST                  - the host where the db is running, locally should be set to 'localhost'
