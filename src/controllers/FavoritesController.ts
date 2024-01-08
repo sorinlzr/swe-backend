@@ -35,17 +35,18 @@ const createFavorite = asyncHandler(async (req, res) => {
         } else {
             if (user.favorites && user.favorites.length >= 4) {
                 res.status(409).json({ error: "User already has 4 favorites" });
+            } else {
+                favorite = await Favorite.create({
+                    type: category._id.toString(),
+                    name: req.body.name,
+                    coverArtUrl: req.body.coverArtUrl
+                });
+    
+                user.favorites?.push(favorite._id);
+                await user.save();
+                res.status(201).json({ data: favorite });
             }
-            favorite = await Favorite.create({
-                type: category._id.toString(),
-                name: req.body.name,
-                coverArtUrl: req.body.coverArtUrl
-            });
-
-            user.favorites?.push(favorite._id);
-            await user.save();
         }
-        res.status(201).json({ data: favorite });
     } catch (error: any) {
         console.error(`Could not create the favorite with the specified data ${req.body}\n`, error);
         res.status(404).json({ error: "Could not create the favorite with the specified data. Please check your input" });
