@@ -9,6 +9,8 @@ export interface IUser extends Document {
     email: string;
     password: string;
     avatar?: string;
+    followedUsers?: Schema.Types.ObjectId[];
+    favorites?: Schema.Types.ObjectId[];
 }
 
 const userSchema = new Schema<IUser>({
@@ -18,11 +20,15 @@ const userSchema = new Schema<IUser>({
     email: { type: String, required: true },
     password: { type: String, required: true },
     avatar: { type: String, required: false },
+    followedUsers: [{ type: Schema.Types.ObjectId, ref: 'User' }],
+    favorites: [{ type: Schema.Types.ObjectId, ref: 'Favorites' }],
 });
 
 userSchema.pre('save', async function (this: IUser, next: Function) {
-    const salt = await bcrypt.genSalt();
-    this.password = await bcrypt.hash(this.password, salt);
+    if(this.isModified('password')) {
+        const salt = await bcrypt.genSalt();
+        this.password = await bcrypt.hash(this.password, salt);
+    }
     if (!this.avatar) {
         const lockNumber = () => Math.floor(Math.random() * 99999) + 1;
         const avatarUrl = await generateRandomUserAvatar(lockNumber());
