@@ -12,10 +12,20 @@ interface UserController {
 const userController: UserController = {};
 
 const createUser = asyncHandler(async (req: Request, res: Response) => {
-    console.log("create users in the controller")
-    console.log(req.body)
-    const newDoc = await User.create(req.body);
-    res.status(201).json({ data: newDoc });
+    const { username, email } = req.body;
+    try {
+        const existingUser = await User.findOne({ $or: [{ username }, { email }] });
+        if (existingUser) {
+            console.error(`Error creating user. There is already an user with the same email or username\n`);
+            res.status(400).json({ error: "There is already an user with the same email or username" });
+        } else {
+            const newDoc = await User.create(req.body);
+            res.status(201).json({ data: newDoc });
+        }
+    } catch (error: any) {
+        console.error(`There was a problem creating the user\n`, error);
+        res.status(400).json({ error: "There was a problem creating the user. Please check your input" });
+    }
 });
 
 const getUsers = asyncHandler(async (req, res, next) => {
