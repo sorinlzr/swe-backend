@@ -7,7 +7,6 @@ interface FavoriteController {
     getFavorites?: any;
     createFavorite?: any;
     deleteFavorite?: any;
-    searchFavorite?: any;
     updateFavorite?: any;
 }
 
@@ -39,7 +38,8 @@ const createFavorite = asyncHandler(async (req, res) => {
                 favorite = await Favorite.create({
                     type: category._id.toString(),
                     name: req.body.name,
-                    coverArtUrl: req.body.coverArtUrl
+                    coverArtUrl: req.body.coverArtUrl,
+                    user: req.body.user
                 });
     
                 user.favorites?.push(favorite._id);
@@ -85,31 +85,6 @@ const deleteFavorite = asyncHandler(async (req, res) => {
 });
 
 const getFavorites = asyncHandler(async (req, res) => {
-    const document = await Favorite.find();
-    if (!document || document.length === 0) {
-        res.status(404);
-        throw new Error("No favorites found");
-    }
-    const size = Array.isArray(document) ? document.length : 1;
-    res.status(200).json({ size, data: document });
-
-});
-
-const getFavoritesByCategoryId = asyncHandler(async (req, res) => {
-    try {
-        const document = await Favorite.find({ "type": req.query.categoryId });
-        if (!document || document.length === 0) {
-            res.status(404).json({ data: null });
-        }
-        const size = Array.isArray(document) ? document.length : 1;
-        res.status(200).json({ size, data: document });
-    } catch (error: any) {
-        console.error(`Could not find the category with id ${req.query.categoryId}\n`, error);
-        res.status(404).json({ error: "Could not find the category with the specified id" });
-    }
-});
-
-const getFavoritesByCategoryName = asyncHandler(async (req, res) => {
     try {
         if (req.query.category) {
             const category = await CategoryModel.findOne({ "name": capitalizeFirstLetter(String(req.query.category)) });
@@ -121,39 +96,29 @@ const getFavoritesByCategoryName = asyncHandler(async (req, res) => {
                 const size = Array.isArray(favorites) ? favorites.length : 1;
                 res.status(200).json({ size, data: favorites });
             }
+        } else if (req.query.id) {
+            const document = await Favorite.findById(req.query.id);
+            console.log(document);
+            if (!document) {
+                res.status(404).json({ error: "Could not find the favorite with the specified id" });
+            }
+            res.status(200).json({ data: document });
+        } else {
+            const document = await Favorite.find();
+            if (!document || document.length === 0) {
+                res.status(404);
+                throw new Error("No favorites found");
+            }
+            const size = Array.isArray(document) ? document.length : 1;
+            res.status(200).json({ size, data: document });
         }
-    } catch (error: any) {
-        console.error(`Could not find the favorite with the name ${req.query.category}\n`, error);
-        res.status(404).json({ error: "Could not find the favorite with the specified name" });
+    }catch (error: any) {
+        console.error(`Could not retrieve the favorites\n`, error);
+        res.status(404).json({ error: "Could not retrieve the favorites" });
     }
+
 });
 
-const getFavoritesById = asyncHandler(async (req, res) => {
-    try {
-        const document = await Favorite.findById(req.query.id);
-        console.log(document);
-        if (!document) {
-            res.status(404).json({ error: "Could not find the favorite with the specified id" });
-        }
-        res.status(200).json({ data: document });
-    } catch (error: any) {
-        console.error(`Could not find the favorite with id ${req.query.id}\n`, error);
-        res.status(404).json({ error: "Could not find the favorite with the specified id" });
-    }
-});
-
-const searchFavorite = asyncHandler(async (req, res, next) => {
-    if (req.query.categoryId) {
-        getFavoritesByCategoryId(req, res, next);
-    } else if (req.query.id) {
-        getFavoritesById(req, res, next);
-    } else if (req.query.category) {
-        getFavoritesByCategoryName(req, res, next);
-    } else {
-        console.log("No favorites found");
-        res.status(404).send();
-    }
-});
 
 const updateFavorite = asyncHandler(async (req, res) => {
     try {
@@ -168,19 +133,24 @@ const updateFavorite = asyncHandler(async (req, res) => {
         }
 
         const favorite = await Favorite.findById(req.params.id);
-        if (favorite) {
-            if (req.query.update === 'true') {
-                favorite.name = req.body.name;
-                favorite.coverArtUrl = req.body.coverArtUrl;
-                await favorite.save();
-                console.log("Updated Favorite: ", favorite);
-
-                res.status(200).json({ data: favorite });
-            } else {
-                res.status(400).json({ message: "Favorite of that type already exists" });
-            }
-        } else {
+        if (!favorite) {
             res.status(404).json({ error: "Could not find the favorite with the specified id" });
+        } else {
+            if (String(favorite.type) === String(category?._id)) {
+                if (req.query.update === 'true') {
+                    favorite.name = req.body.name ? req.body.name : favorite.name;
+                    favorite.coverArtUrl = req.body.coverArtUrl ? req.body.coverArtUrl : favorite.coverArtUrl;
+                    favorite.user=req.body.user;
+                    await favorite.save();
+                    console.log("Updated Favorite: ", favorite);
+    
+                    res.status(200).json({ data: favorite });
+                } else {
+                    res.status(400).json({ message: "Favorite of that type already exists. Are you sure you want to update it?" });
+                }
+            } else {
+                res.status(400).json({ error: "Cannot update the type of the favorite." });
+            }
         }
     } catch (error: any) {
         console.error(`Could not update the favorite with id ${req.params.id}\n`, error);
@@ -195,7 +165,6 @@ function capitalizeFirstLetter(str: string): string {
 favoriteController.createFavorite = createFavorite;
 favoriteController.deleteFavorite = deleteFavorite;
 favoriteController.getFavorites = getFavorites;
-favoriteController.searchFavorite = searchFavorite;
 favoriteController.updateFavorite = updateFavorite;
 
 export default favoriteController;

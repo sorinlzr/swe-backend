@@ -29,13 +29,27 @@ const createUser = asyncHandler(async (req: Request, res: Response) => {
 });
 
 const getUsers = asyncHandler(async (req, res, next) => {
-    const document = await User.find();
-
+    const document = await User.find().populate({
+        path: 'favorites',
+        populate: {
+            path: 'type',
+            model: 'Category'
+        },
+        model: 'Favorite'
+    });;
     res.status(200).json({ size: document.length, data: document });
 });
 
-const getOneUser = asyncHandler (async (req, res, next) => {
-    const document = await User.findOne({ username: req.params.username });
+const getOneUser = asyncHandler(async (req, res, next) => {
+    const document = await User.findOne({ username: req.params.username })
+        .populate({
+            path: 'favorites',
+            populate: {
+                path: 'type',
+                model: 'Category'
+            },
+            model: 'Favorite'
+        });
     if (!document) {
         res.status(404);
         throw new Error("User not found");
@@ -50,28 +64,42 @@ const updateUser = asyncHandler(async (req, res, next) => {
         throw new Error("User not found");
     }
 
-    if (req.body.firstname) {
-        user.firstname = req.body.firstname;
+    if (req.query.update !== 'true') {
+        res.status(400).json({ message: "Are you sure you want to update the user?" });
+    } else {
+        if (req.body.firstname) {
+            user.firstname = req.body.firstname;
+        }
+        if (req.body.lastname) {
+            user.lastname = req.body.lastname;
+        }
+        if (req.body.username) {
+            const existingUser = await User.findOne({ "username": req.body.username });
+            if (existingUser) {
+                console.error(`Error creating user. There is already an user with the same username\n`);
+                res.status(400).json({ error: "There is already an user with the same username" });
+            } else {
+                user.username = req.body.username;
+            }
+        }
+        if (req.body.password) {
+            user.password = req.body.password;
+        }
+        if (req.body.email) {
+            const existingUser = await User.findOne({ "email": req.body.email });
+            if (existingUser) {
+                console.error(`Error creating user. There is already an user with the same email\n`);
+                res.status(400).json({ error: "There is already an user with the same email" });
+            } else {
+                user.email = req.body.email;
+            }
+        }
+        if (req.body.avatar) {
+            user.avatar = req.body.avatar;
+        }
+        await user.save();
+        res.status(200).json({ message: "User updated successfully", data: user });
     }
-    if (req.body.lastname) {
-        user.lastname = req.body.lastname;
-    }
-    if (req.body.username) {
-        user.username = req.body.username;
-    }
-    if (req.body.password) {
-        user.password = req.body.password;
-    }
-    if (req.body.email) {
-        user.email = req.body.email;
-    }
-    if (req.body.avatar) {
-        user.avatar = req.body.avatar;
-    }
-
-    await user.save();
-
-    res.status(200).json({ message: "User updated successfully", data: user });
 });
 
 userController.getUsers = getUsers;
