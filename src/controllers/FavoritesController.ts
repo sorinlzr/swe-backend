@@ -2,6 +2,7 @@ import asyncHandler from 'express-async-handler';
 import Favorite from '../models/Favorite';
 import { CategoryModel } from '../models/Category';
 import User from '../models/User';
+import { getUserIdFromJwtToken } from './AuthController';
 
 interface FavoriteController {
     getFavorites?: any;
@@ -20,7 +21,9 @@ const createFavorite = asyncHandler(async (req, res) => {
             throw new Error("Category not found");
         }
 
-        const user = await User.findById(req.body.user);
+        const jwtUserId = getUserIdFromJwtToken(req.cookies.token);
+        const user = await User.findById(jwtUserId);
+
         if (!user) {
             res.status(404);
             throw new Error("User not found");
@@ -28,7 +31,7 @@ const createFavorite = asyncHandler(async (req, res) => {
 
         let favorite = await Favorite.findOne({ type: category._id.toString(), _id: { $in: user.favorites } });
 
-        if (favorite){
+        if (favorite) {
             res.status(409).json({ error: "A favorite of this category already exists for this user" });
 
         } else {
@@ -39,9 +42,8 @@ const createFavorite = asyncHandler(async (req, res) => {
                     type: category._id.toString(),
                     name: req.body.name,
                     coverArtUrl: req.body.coverArtUrl,
-                    user: req.body.user
+                    user: jwtUserId
                 });
-    
                 user.favorites?.push(favorite._id);
                 await user.save();
                 res.status(201).json({ data: favorite });
@@ -55,29 +57,30 @@ const createFavorite = asyncHandler(async (req, res) => {
 
 const deleteFavorite = asyncHandler(async (req, res) => {
     try {
-        const favorite = await Favorite.findOneAndDelete({_id: req.params.id});
-        if (!favorite) {
-            res.status(404);
-            throw new Error("Favorite not found");
-        }
+        const jwtUserId = getUserIdFromJwtToken(req.cookies.token);
 
-        const user = await User.findOne({ favorites: { $in: [favorite._id] } });
-        console.log("user");
-        console.log(user);
-        
-        if (user) {
-            // Remove the favorite from the user's favorites
-            const index = user?.favorites?.indexOf(favorite._id);
-            console.log("index");
-            console.log(index);
-            if (index && index > -1) {
-                user.favorites?.splice(index, 1);
-                await user.save();
+        let favorite = await Favorite.findById(req.params.id);
+        const user = await User.findById(favorite?.user);
+
+        if (user && user._id.toString() === jwtUserId) {
+            const favorite = await Favorite.findOneAndDelete({ "_id": req.params.id });
+            if (!favorite) {
+                res.status(404);
+                throw new Error("Favorite not found");
             }
-        }
 
-        console.log("Deleted Favorite: ", favorite);
-        res.status(204).send();
+            const index = user?.favorites?.map(favorite => favorite.toString()).indexOf(favorite._id.toString());
+            if (index! > -1) {
+                user.favorites?.splice(index!, 1);
+                await user.save();
+            } else {
+                console.error("Could not remove the favorite from the user. The Favorite was not found in the favorites list of the user, this should not happen");
+            }
+            console.log("Deleted Favorite: ", favorite);
+            res.status(204).send();
+        } else {
+            res.status(400).json({ error: "Could not delete the favorite with the specified data. Please check your input" });
+        }
     } catch (error: any) {
         console.error(`Could not delete the favorite with id ${req.query.id}\n`, error);
         res.status(404).json({ error: "Could not delete the favorite with the specified id. Id does not exist" });
@@ -112,7 +115,7 @@ const getFavorites = asyncHandler(async (req, res) => {
             const size = Array.isArray(document) ? document.length : 1;
             res.status(200).json({ size, data: document });
         }
-    }catch (error: any) {
+    } catch (error: any) {
         console.error(`Could not retrieve the favorites\n`, error);
         res.status(404).json({ error: "Could not retrieve the favorites" });
     }
@@ -140,10 +143,10 @@ const updateFavorite = asyncHandler(async (req, res) => {
                 if (req.query.update === 'true') {
                     favorite.name = req.body.name ? req.body.name : favorite.name;
                     favorite.coverArtUrl = req.body.coverArtUrl ? req.body.coverArtUrl : favorite.coverArtUrl;
-                    favorite.user=req.body.user;
+                    favorite.user = req.body.user;
                     await favorite.save();
                     console.log("Updated Favorite: ", favorite);
-    
+
                     res.status(200).json({ data: favorite });
                 } else {
                     res.status(400).json({ message: "Favorite of that type already exists. Are you sure you want to update it?" });
