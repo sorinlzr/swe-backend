@@ -35,7 +35,7 @@ const getUsers = asyncHandler(async (req, res, next) => {
 });
 
 const getOneUser = asyncHandler (async (req, res, next) => {
-    const document = await User.findById(req.params.id);
+    const document = await User.findOne({ username: req.params.username });
     if (!document) {
         res.status(404);
         throw new Error("User not found");
@@ -44,7 +44,7 @@ const getOneUser = asyncHandler (async (req, res, next) => {
 });
 
 const updateUser = asyncHandler(async (req, res, next) => {
-    const user = await User.findById(req.params.id);
+    const user = await User.findOne({ username: req.params.username });
     if (!user) {
         res.status(404);
         throw new Error("User not found");
