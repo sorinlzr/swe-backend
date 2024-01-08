@@ -54,12 +54,28 @@ const createFavorite = asyncHandler(async (req, res) => {
 
 const deleteFavorite = asyncHandler(async (req, res) => {
     try {
-        const document = await Favorite.findByIdAndDelete(req.params.id);
-        if (!document) {
+        const favorite = await Favorite.findOneAndDelete({_id: req.params.id});
+        if (!favorite) {
             res.status(404);
             throw new Error("Favorite not found");
         }
-        console.log("Deleted Favorite: ", document);
+
+        const user = await User.findOne({ favorites: { $in: [favorite._id] } });
+        console.log("user");
+        console.log(user);
+        
+        if (user) {
+            // Remove the favorite from the user's favorites
+            const index = user?.favorites?.indexOf(favorite._id);
+            console.log("index");
+            console.log(index);
+            if (index && index > -1) {
+                user.favorites?.splice(index, 1);
+                await user.save();
+            }
+        }
+
+        console.log("Deleted Favorite: ", favorite);
         res.status(204).send();
     } catch (error: any) {
         console.error(`Could not delete the favorite with id ${req.query.id}\n`, error);
@@ -157,7 +173,7 @@ const updateFavorite = asyncHandler(async (req, res) => {
                 favorite.coverArtUrl = req.body.coverArtUrl;
                 await favorite.save();
                 console.log("Updated Favorite: ", favorite);
-                
+
                 res.status(200).json({ data: favorite });
             } else {
                 res.status(400).json({ message: "Favorite of that type already exists" });
