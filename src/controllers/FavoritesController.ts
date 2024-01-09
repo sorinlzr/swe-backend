@@ -130,7 +130,9 @@ const updateFavorite = asyncHandler(async (req, res) => {
             res.status(404).json({ error: "Could not find the category with the specified name" });
         }
 
-        const user = await User.findById(req.body.user);
+        const jwtUserId = getUserIdFromJwtToken(req.cookies.token);
+
+        const user = await User.findById(jwtUserId);
         if (!user) {
             res.status(404).json({ error: "Could not find the user with the specified id" });
         }
@@ -138,12 +140,12 @@ const updateFavorite = asyncHandler(async (req, res) => {
         const favorite = await Favorite.findById(req.params.id);
         if (!favorite) {
             res.status(404).json({ error: "Could not find the favorite with the specified id" });
-        } else {
+        } else if (String(favorite?.user) === String(user?._id)) {
             if (String(favorite.type) === String(category?._id)) {
                 if (req.query.update === 'true') {
                     favorite.name = req.body.name ? req.body.name : favorite.name;
                     favorite.coverArtUrl = req.body.coverArtUrl ? req.body.coverArtUrl : favorite.coverArtUrl;
-                    favorite.user = req.body.user;
+                    favorite.user = user?._id;
                     await favorite.save();
                     console.log("Updated Favorite: ", favorite);
 
@@ -154,6 +156,9 @@ const updateFavorite = asyncHandler(async (req, res) => {
             } else {
                 res.status(400).json({ error: "Cannot update the type of the favorite." });
             }
+        } else {
+            console.log("Cannot update Favorites of other users.")
+            res.status(404).json({ error: "Could not find the favorite with the specified id" });
         }
     } catch (error: any) {
         console.error(`Could not update the favorite with id ${req.params.id}\n`, error);
