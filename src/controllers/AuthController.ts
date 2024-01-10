@@ -21,19 +21,19 @@ export const login = asyncHandler(async (req, res, next): Promise<void> => {
         const password = req.body.password;
 
         if (!username || !password) {
-            res.status(400).json({ message: 'All fields are required' });
+            res.status(400).json({ error: 'All fields are required' });
         }
 
         const user = await User.findOne({ username });
 
         if (!user) {
-            res.status(404).json({ message: "Username not found" });
+            res.status(404).json({ error: "Username not found" });
         } else {
             console.log("user found");
 
             const auth = await bcrypt.compare(password, user.password)
             if (!auth) {
-                res.status(401).json({ message: 'Incorrect password or email' })
+                res.status(401).json({ error: 'Incorrect password' })
             }
 
             console.log("Matching password");
@@ -50,7 +50,7 @@ export const login = asyncHandler(async (req, res, next): Promise<void> => {
 
             console.log("created token");
 
-            const maxAge = Number(process.env.JWT_MAX_AGE) || 3600000;
+            const maxAge = Number(process.env.JWT_MAX_AGE) * 1000 || 3600000;
             const cookieOptions: CookieOptions = {
                 httpOnly: false,
                 secure: false,
@@ -122,7 +122,7 @@ const createSecretToken = (payload: {}) => {
         payload,
         String(process.env.JWT_SECRET),
         {
-            expiresIn: Number(process.env.JWT_MAX_AGE) || 3600
+            expiresIn: Number(process.env.JWT_MAX_AGE) * 1000 || 3600000
         }
     );
 }
