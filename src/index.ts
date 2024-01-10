@@ -2,7 +2,7 @@ import express from "express";
 import 'dotenv/config'
 import cors from "cors";
 import bodyParser from 'body-parser';
-import cookieParser from 'cookie-parser'; 
+import cookieParser from 'cookie-parser';
 import { connectToDatabase, initializeCategories } from './config/dbconnection';
 import userRouter from './routers/userRouter';
 import categoryRouter from './routers/CategoryRouter';
@@ -13,6 +13,7 @@ import authRouter from "./routers/AuthRouter";
 const port = process.env.SWE_BACKEND_PORT || 5000;
 const corsOptions = {
     origin: `http://localhost:${process.env.SWE_FRONTEND_PORT}`,
+    credentials: true,
 };
 
 const app = express();
