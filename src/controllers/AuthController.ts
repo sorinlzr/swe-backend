@@ -7,9 +7,12 @@ import asyncHandler from "express-async-handler"
 import User from "../models/User.js";
 import { CookieOptions, Request, Response, NextFunction } from "express";
 
-export interface JwtPayload {
+const JWT_TOKEN = "swe-backend-cookie";
+export interface ResponseBody {
     id: string;
     username: string;
+    firstname?: string;
+    lastname?: string;
 }
 
 export const login = asyncHandler(async (req, res, next): Promise<void> => {
@@ -35,26 +38,32 @@ export const login = asyncHandler(async (req, res, next): Promise<void> => {
 
             console.log("Matching password");
 
-            const payload: JwtPayload = {
+            const payload: ResponseBody = {
                 id: user._id,
-                username: user.username
-            };
+                username: user.username,
+                firstname: user.firstname,
+                lastname: user.lastname
+            }
 
             // Sign token
             const token = createSecretToken(payload);
 
             console.log("created token");
 
-            const maxAge = Number(process.env.JWT_MAX_AGE) || 3600;
+            const maxAge = Number(process.env.JWT_MAX_AGE) || 3600000;
             const cookieOptions: CookieOptions = {
                 httpOnly: false,
-                maxAge: maxAge * 1000
+                secure: false,
+                domain: "localhost",
+                sameSite: "lax",
+                path: "/",
+                maxAge: maxAge
             };
 
             res.
                 status(200)
-                .cookie("token", token, cookieOptions)
-                .json({ data: user });
+                .cookie(JWT_TOKEN, token, cookieOptions)
+                .json(payload);
         }
 
 
@@ -67,7 +76,7 @@ export const login = asyncHandler(async (req, res, next): Promise<void> => {
 export const logout = asyncHandler(async (req, res, next) => {
     try {
         // Clear the token cookie
-        res.clearCookie('token');
+        res.clearCookie(JWT_TOKEN);
 
         res.status(200).json({ message: 'Logged out successfully' });
     } catch (error) {
@@ -104,7 +113,7 @@ export const validateToken = (req: Request, res: Response, next: NextFunction) =
 
 export const getUserIdFromJwtToken = (cookieToken: string) => {
     const jwtSecret = process.env.JWT_SECRET || '';
-    const jwtPayload = jwt.verify(cookieToken, jwtSecret) as JwtPayload;
+    const jwtPayload = jwt.verify(cookieToken, jwtSecret) as ResponseBody;
     return jwtPayload?.id;
 }
 
