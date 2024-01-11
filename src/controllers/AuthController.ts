@@ -5,15 +5,10 @@ import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import asyncHandler from "express-async-handler"
 import User from "../models/User.js";
+import { IUser as ResponseBody} from '../interfaces/IUser.js';
 import { CookieOptions, Request, Response, NextFunction } from "express";
 
 const JWT_TOKEN = "swe-backend-cookie";
-export interface ResponseBody {
-    id: string;
-    username: string;
-    firstname?: string;
-    lastname?: string;
-}
 
 export const login = asyncHandler(async (req, res, next): Promise<void> => {
     try {
@@ -42,7 +37,8 @@ export const login = asyncHandler(async (req, res, next): Promise<void> => {
                 id: user._id,
                 username: user.username,
                 firstname: user.firstname,
-                lastname: user.lastname
+                lastname: user.lastname,
+                avatar: user.avatar
             }
 
             // Sign token

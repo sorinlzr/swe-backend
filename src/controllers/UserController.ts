@@ -1,4 +1,6 @@
-import User, { IUser } from '../models/User';
+import User from '../models/User';
+import { IUser as ResponseBody} from '../interfaces/IUser.js';
+
 import { Request, Response } from "express";
 import asyncHandler from 'express-async-handler';
 
@@ -20,7 +22,16 @@ const createUser = asyncHandler(async (req: Request, res: Response) => {
             res.status(400).json({ error: "There is already an user with the same email or username" });
         } else {
             const newDoc = await User.create(req.body);
-            res.status(201).json({ data: newDoc });
+
+            const payload: ResponseBody = {
+                id: newDoc._id,
+                username: newDoc.username,
+                firstname: newDoc.firstname,
+                lastname: newDoc.lastname,
+                avatar: newDoc.avatar
+            }
+
+            res.status(201).json({ data: payload });
         }
     } catch (error: any) {
         console.error(`There was a problem creating the user\n`, error);
@@ -37,7 +48,17 @@ const getUsers = asyncHandler(async (req, res, next) => {
         },
         model: 'Favorite'
     });;
-    res.status(200).json({ size: document.length, data: document });
+
+    const users: ResponseBody[] = document.map(doc => ({
+        id: doc._id,
+        username: doc.username,
+        firstname: doc.firstname,
+        lastname: doc.lastname,
+        avatar: doc.avatar,
+        favorites: doc.favorites
+    }));
+
+    res.status(200).json({ size: document.length, data: users });
 });
 
 const getOneUser = asyncHandler(async (req, res, next) => {
@@ -51,10 +72,22 @@ const getOneUser = asyncHandler(async (req, res, next) => {
             model: 'Favorite'
         });
     if (!document) {
-        res.status(404);
+        res.status(404).json({ error: "User not found" });
         throw new Error("User not found");
     }
-    res.status(200).json({ data: document });
+
+    const user: ResponseBody = {
+        id: document._id,
+        username: document.username,
+        firstname: document.firstname,
+        lastname: document.lastname,
+        avatar: document.avatar,
+        email: document.email,
+        favorites: document.favorites,
+        followedUsers: document.followedUsers
+    };
+    
+    res.status(200).json({ user });
 });
 
 const updateUser = asyncHandler(async (req, res, next) => {
