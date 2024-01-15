@@ -73,21 +73,21 @@ const getOneUser = asyncHandler(async (req, res, next) => {
         });
     if (!document) {
         res.status(404).json({ error: "User not found" });
-        throw new Error("User not found");
+    } else {
+        const user: ResponseBody = {
+            id: document._id,
+            username: document.username,
+            firstname: document.firstname,
+            lastname: document.lastname,
+            avatar: document.avatar,
+            email: document.email,
+            favorites: document.favorites,
+            followedUsers: document.followedUsers
+        };
+        
+        res.status(200).json({ user });
     }
 
-    const user: ResponseBody = {
-        id: document._id,
-        username: document.username,
-        firstname: document.firstname,
-        lastname: document.lastname,
-        avatar: document.avatar,
-        email: document.email,
-        favorites: document.favorites,
-        followedUsers: document.followedUsers
-    };
-    
-    res.status(200).json({ user });
 });
 
 const updateUser = asyncHandler(async (req, res, next) => {
