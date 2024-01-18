@@ -21,7 +21,7 @@ const createFavorite = asyncHandler(async (req, res) => {
             throw new Error("Category not found");
         }
 
-        const jwtUserId = getUserIdFromJwtToken(req.cookies.token);
+        const jwtUserId = getUserIdFromJwtToken(req);
         const user = await User.findById(jwtUserId);
 
         if (!user) {
@@ -57,7 +57,7 @@ const createFavorite = asyncHandler(async (req, res) => {
 
 const deleteFavorite = asyncHandler(async (req, res) => {
     try {
-        const jwtUserId = getUserIdFromJwtToken(req.cookies.token);
+        const jwtUserId = getUserIdFromJwtToken(req);
 
         let favorite = await Favorite.findById(req.params.id);
         const user = await User.findById(favorite?.user);
@@ -130,7 +130,7 @@ const updateFavorite = asyncHandler(async (req, res) => {
             res.status(404).json({ error: "Could not find the category with the specified name" });
         }
 
-        const jwtUserId = getUserIdFromJwtToken(req.cookies.token);
+        const jwtUserId = getUserIdFromJwtToken(req);
 
         const user = await User.findById(jwtUserId);
         if (!user) {
