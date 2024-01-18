@@ -1,3 +1,4 @@
+import { IFavorite as ResponseBody} from '../interfaces/IFavorite';
 import asyncHandler from 'express-async-handler';
 import Favorite from '../models/Favorite';
 import { CategoryModel } from '../models/Category';
@@ -46,7 +47,14 @@ const createFavorite = asyncHandler(async (req, res) => {
                 });
                 user.favorites?.push(favorite._id);
                 await user.save();
-                res.status(201).json({ data: favorite });
+
+                const payload: ResponseBody = {
+                    id: favorite._id,
+                    name: favorite.name,
+                    type: category.name.toString(),
+                    coverArtUrl: favorite.coverArtUrl
+                }
+                res.status(201).json({ data: payload });
             }
         }
     } catch (error: any) {
