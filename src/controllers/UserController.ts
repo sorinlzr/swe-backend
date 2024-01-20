@@ -3,12 +3,16 @@ import { IUser as ResponseBody} from '../interfaces/IUser.js';
 
 import { Request, Response } from "express";
 import asyncHandler from 'express-async-handler';
+import { getUserIdFromJwtToken } from './AuthController';
 
 interface UserController {
     createUser?: any;
     getUsers?: any;
     getOneUser?: any;
     updateUser?: any;
+    getFollowedUsersFavorites?: any;
+    addFollowedUser?: any;
+    deleteFollowedUser?: any;
 }
 
 const userController: UserController = {};
@@ -135,9 +139,132 @@ const updateUser = asyncHandler(async (req, res, next) => {
     }
 });
 
+const getFollowedUsersFavorites = asyncHandler(async (req, res, next) => {
+    const jwtUserId = getUserIdFromJwtToken(req);
+
+    if(!jwtUserId) {
+        res.status(401).json({ error: "Unautorized." });
+        return;
+    }
+
+    const user = await User.findById(jwtUserId);
+    if (!user) {
+        res.status(500).json({ error: "Unexpected Error happened." });
+        throw new Error("Current User not found? - Should no be possible!");
+    }
+
+    // Ich folge niemandem.
+    if(!user?.followedUsers || user?.followedUsers.length === 0){
+        res.status(404).json({ error: "Current User is not following anyone." });
+        return;
+    } 
+    
+    // Kontrolle, ob FollowedUsers Favoriten haben
+    let followedUsersWithFavorites = [];
+    for (let followedUserId of user?.followedUsers) {
+        const followedUser = await User.findById(followedUserId)
+        .populate({
+            path: 'favorites',
+            populate: {
+                path: 'type',
+                model: 'Category'
+            },
+            model: 'Favorite'
+        });
+        if(followedUser?.favorites && followedUser?.favorites?.length > 0){
+            followedUsersWithFavorites.push(followedUser)
+        }
+    }
+
+    //Kein FollowedUser hat Favoriten
+    if (!followedUsersWithFavorites || followedUsersWithFavorites.length === 0) {
+        res.status(404).json({error : "None of the followed Users has Favorites."});
+        return;
+    }
+
+    // Daten zurückliefern
+    const usersWithFavorites: ResponseBody[] = followedUsersWithFavorites.map(user => ({
+        id: user._id,
+        username: user.username,
+        firstname: user.firstname,
+        lastname: user.lastname,
+        avatar: user.avatar,
+        favorites: user.favorites
+    }));
+    res.status(200).json({ size: followedUsersWithFavorites.length, data: usersWithFavorites });
+});
+
+const addFollowedUser = asyncHandler(async (req, res, next) => {
+    const jwtUserId = getUserIdFromJwtToken(req);
+
+    if(!jwtUserId) {
+        res.status(401).json({ error: "Unautorized." });
+        return;
+    }
+
+    const user = await User.findById(jwtUserId);
+    if (!user) {
+        res.status(500).json({ error: "Unexpected Error happened." });
+        throw new Error("Current User not found? - Should no be possible!");
+    } else {
+        const userToFollow = await User.findById(req.params.userid);
+
+        if (!userToFollow) {
+            res.status(404).json({ error: "Followed user not found" });
+            return;
+        } 
+        if (user._id.toString() === userToFollow._id.toString()) {
+            res.status(409).json({ error: "User cannot follow himself" });
+            return;
+        }
+        else {
+            if (user.followedUsers?.includes(userToFollow._id)) {
+                res.status(409).json({ error: "User is already following this user" });
+            } else {
+                user.followedUsers?.push(userToFollow._id);
+                await user.save();
+                res.status(204).json({ message: "Now following the User" });
+            }
+        }
+    }
+});
+
+const deleteFollowedUser = asyncHandler(async (req, res, next) => {
+    const jwtUserId = getUserIdFromJwtToken(req);
+
+    if(!jwtUserId) {
+        res.status(401).json({ error: "Unautorized." });
+        return;
+    }
+
+    const user = await User.findById(jwtUserId);
+    if (!user) {
+        res.status(500).json({ error: "Unexpected Error happened." });
+        throw new Error("Current User not found? - Should no be possible!");
+    }
+    else {
+        const userToUnfollow = await User.findById(req.params.userid);
+        if (!userToUnfollow) {
+            res.status(404).json({ error: "Followed user not found" });
+        } else {
+            if (!user.followedUsers?.includes(userToUnfollow._id)) {
+                res.status(409).json({ error: "User is not following this user" });
+            } else {
+                user.followedUsers = user.followedUsers?.filter(followedUser => followedUser.toString() !== userToUnfollow._id.toString());
+                await user.save();
+                res.status(204).json({ message: "Unfollowed the User" });
+            }
+        }
+    }
+});
+
 userController.getUsers = getUsers;
 userController.createUser = createUser;
 userController.getOneUser = getOneUser;
 userController.updateUser = updateUser;
+
+userController.getFollowedUsersFavorites = getFollowedUsersFavorites;
+userController.addFollowedUser = addFollowedUser;
+userController.deleteFollowedUser = deleteFollowedUser;
 
 export default userController;
