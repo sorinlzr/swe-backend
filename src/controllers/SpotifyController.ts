@@ -60,19 +60,24 @@ createSpotifyAccessToken();
 const getSongs = asyncHandler(async (req, res) => {
     
     let url = "https://api.spotify.com/v1/search?q=";
-    let searchText = req.body.searchText;
+    let searchText = req.query.searchText;
     let searchparamsURIEncoded = "&type=track&market=AT&limit=5";
   
+    if (!searchText) {
+        res.status(404).json({ error: "No search text provided" });
+        return;
+    }
+
     let finalURL =
-      url + encodeURIComponent(searchText) + searchparamsURIEncoded;
+      url + encodeURIComponent(searchText.toString()) + searchparamsURIEncoded;
     let xhr = new XMLHttpRequest();
     xhr.onload = function () {
         let response = JSON.parse(xhr.responseText);
         let tracks = [];
         for(let item of response.tracks.items) {
             tracks.push({
-                name: item.name + " - " + item.artists[0].name,
-                image: item.album.images[0].url
+                name: item?.name + " - " + item?.artists[0]?.name,
+                image: item?.album?.images[0]?.url
             });
         }
         res.status(200).json( tracks);
@@ -87,19 +92,24 @@ const getSongs = asyncHandler(async (req, res) => {
 const getArtists = asyncHandler(async (req, res) => {
 
     let url = "https://api.spotify.com/v1/search?q=";
-    let searchText = req.body.searchText;
+    let searchText = req.query.searchText;
     let searchparamsURIEncoded = "&type=artist&market=AT&limit=5";
   
+    if (!searchText) {
+            res.status(404).json({ error: "No search text provided" });
+            return;
+    }
+
     let finalURL =
-      url + encodeURIComponent(searchText) + searchparamsURIEncoded;
+        url + encodeURIComponent(searchText.toString()) + searchparamsURIEncoded;
     let xhr = new XMLHttpRequest();
     xhr.onload = function () {
         let response = JSON.parse(xhr.responseText);
         let artists = [];
         for(let item of response.artists.items) {
             artists.push({
-                name: item.name,
-                image: item.images[0].url
+                name: item?.name,
+                image: item?.images[0]?.url
             });
         }
         res.status(200).json( artists);
