@@ -27,7 +27,7 @@ const createFavorite = asyncHandler(async (req, res) => {
 
         if (!user) {
             res.status(404);
-            throw new Error("User not found");
+            throw new Error("User not found while trying to create a new favorite");
         }
 
         let favorite = await Favorite.findOne({ type: category._id.toString(), _id: { $in: user.favorites } });
@@ -142,7 +142,7 @@ const updateFavorite = asyncHandler(async (req, res) => {
 
         const user = await User.findById(jwtUserId);
         if (!user) {
-            res.status(404).json({ error: "Could not find the user with the specified id" });
+            res.status(404).json({ error: `User with username ${req.params.username} not found. Cannot update favorite` });
         }
 
         const favorite = await Favorite.findById(req.params.id);

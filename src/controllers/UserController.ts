@@ -76,7 +76,7 @@ const getOneUser = asyncHandler(async (req, res, next) => {
             model: 'Favorite'
         });
     if (!document) {
-        res.status(404).json({ error: "User not found" });
+        res.status(404).json({ error: `User with username ${req.params.username} not found` });
     } else {
         const user: ResponseBody = {
             id: document._id,
@@ -98,7 +98,7 @@ const updateUser = asyncHandler(async (req, res, next) => {
     const user = await User.findOne({ username: req.params.username });
     if (!user) {
         res.status(404);
-        throw new Error("User not found");
+        throw new Error(`User ${req.params.username} not found. Cannot update user`);
     }
 
     if (req.query.update !== 'true') {
@@ -142,28 +142,26 @@ const updateUser = asyncHandler(async (req, res, next) => {
 const getFollowedUsersFavorites = asyncHandler(async (req, res, next) => {
     const jwtUserId = getUserIdFromJwtToken(req);
 
-    if(!jwtUserId) {
-        res.status(401).json({ error: "Unautorized." });
+    if (!jwtUserId) {
+        res.status(401).json({ error: "Unauthorized." });
         return;
     }
 
-    const user = await User.findById(jwtUserId);
-    if (!user) {
-        res.status(500).json({ error: "Unexpected Error happened." });
-        throw new Error("Current User not found? - Should no be possible!");
-    }
+    try {
+        const user = await User.findById(jwtUserId);
+        
+        if (!user) {
+            res.status(500).json({ error: "Unexpected Error happened." });
+            throw new Error("Current User not found? - Should not be possible!");
+        }
 
-    // Ich folge niemandem.
-    if(!user?.followedUsers || user?.followedUsers.length === 0){
-        res.status(404).json({ error: "Current User is not following anyone." });
-        return;
-    } 
-    
-    // Kontrolle, ob FollowedUsers Favoriten haben
-    let followedUsersWithFavorites = [];
-    for (let followedUserId of user?.followedUsers) {
-        const followedUser = await User.findById(followedUserId)
-        .populate({
+        if (!user.followedUsers || user.followedUsers.length === 0) {
+            res.status(404).json({ error: "Current User is not following anyone." });
+            return;
+        }
+
+        const followedUsersWithFavorites = await User.find({ _id: { $in: user.followedUsers},
+            $where: "this.favorites.length > 0"}).populate({
             path: 'favorites',
             populate: {
                 path: 'type',
@@ -171,28 +169,28 @@ const getFollowedUsersFavorites = asyncHandler(async (req, res, next) => {
             },
             model: 'Favorite'
         });
-        if(followedUser?.favorites && followedUser?.favorites?.length > 0){
-            followedUsersWithFavorites.push(followedUser)
+
+        if (followedUsersWithFavorites.length === 0) {
+            res.status(404).json({ error: "None of the followed Users has Favorites." });
+            return;
         }
-    }
 
-    //Kein FollowedUser hat Favoriten
-    if (!followedUsersWithFavorites || followedUsersWithFavorites.length === 0) {
-        res.status(404).json({error : "None of the followed Users has Favorites."});
-        return;
-    }
+        const usersWithFavorites: ResponseBody[] = followedUsersWithFavorites.map(user => ({
+            id: user._id,
+            username: user.username,
+            firstname: user.firstname,
+            lastname: user.lastname,
+            avatar: user.avatar,
+            favorites: user.favorites
+        }));
 
-    // Daten zurückliefern
-    const usersWithFavorites: ResponseBody[] = followedUsersWithFavorites.map(user => ({
-        id: user._id,
-        username: user.username,
-        firstname: user.firstname,
-        lastname: user.lastname,
-        avatar: user.avatar,
-        favorites: user.favorites
-    }));
-    res.status(200).json({ size: followedUsersWithFavorites.length, data: usersWithFavorites });
+        res.status(200).json({ size: usersWithFavorites.length, data: usersWithFavorites });
+    } catch (error) {
+        console.error("Error in getFollowedUsersFavorites:", error);
+        res.status(500).json({ error: "Internal Server Error." });
+    }
 });
+
 
 const addFollowedUser = asyncHandler(async (req, res, next) => {
     const jwtUserId = getUserIdFromJwtToken(req);
