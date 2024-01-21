@@ -172,7 +172,7 @@ const getFollowedUsersWithFavorites = asyncHandler(async (req, res, next) => {
 
     //Kein FollowedUser hat Favoriten
     if (!followedUsersWithFavorites || followedUsersWithFavorites.length === 0) {
-        res.status(404).json({error : "None of the followed Users has Favorites."});
+        res.status(204).json({message : "None of the followed Users has Favorites."});
         return;
     }
 
