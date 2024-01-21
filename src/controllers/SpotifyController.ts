@@ -12,11 +12,8 @@ interface SpotifyController {
 const spotifyController: SpotifyController = {};
 
 function createSpotifyAccessToken () {
-    // Token Holen - gehört dann zwar ins Backend, und wird dem Client nach der Anmeldung mitgeschickt, aber vorerst
-    // kann ich es so machen.
-    // Daten vom Backend.
-    const client_id = "a77c30d64c6e4f448693b864b9fa0ce8";
-    const client_secret = "7fe3fb3fb288461e8dd8949659f42971";
+    const client_id = process.env.SPOTIFY_CLIENT_ID;
+    const client_secret = process.env.SPOTIFY_CLIENT_SECRET;
 
     let authOptions = {
         url: "https://accounts.spotify.com/api/token",
