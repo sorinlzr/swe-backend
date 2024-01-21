@@ -111,8 +111,13 @@ export const validateToken = (req: Request, res: Response, next: NextFunction) =
 export const getUserIdFromJwtToken = (req: Request) => {
     console.debug("Getting user id from jwt token")
     const jwtSecret = process.env.JWT_SECRET || '';
-    const jwtPayload = jwt.verify(req.cookies[TOKEN], jwtSecret) as ResponseBody;
-    return jwtPayload?.id;
+    try {
+        const jwtPayload = jwt.verify(req.cookies[TOKEN], jwtSecret) as ResponseBody;
+        return jwtPayload?.id;
+    }
+    catch (error) {
+        return null;
+    }
 }
 
 const createSecretToken = (payload: {}) => {
