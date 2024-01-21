@@ -10,7 +10,7 @@ interface UserController {
     getUsers?: any;
     getOneUser?: any;
     updateUser?: any;
-    getFollowedUsersFavorites?: any;
+    getFollowedUsersWithFavorites?: any;
     addFollowedUser?: any;
     deleteFollowedUser?: any;
 }
@@ -139,7 +139,7 @@ const updateUser = asyncHandler(async (req, res, next) => {
     }
 });
 
-const getFollowedUsersFavorites = asyncHandler(async (req, res, next) => {
+const getFollowedUsersWithFavorites = asyncHandler(async (req, res, next) => {
     const jwtUserId = getUserIdFromJwtToken(req);
 
     if(!jwtUserId) {
@@ -160,21 +160,15 @@ const getFollowedUsersFavorites = asyncHandler(async (req, res, next) => {
     } 
     
     // Kontrolle, ob FollowedUsers Favoriten haben
-    let followedUsersWithFavorites = [];
-    for (let followedUserId of user?.followedUsers) {
-        const followedUser = await User.findById(followedUserId)
-        .populate({
-            path: 'favorites',
-            populate: {
-                path: 'type',
-                model: 'Category'
-            },
-            model: 'Favorite'
-        });
-        if(followedUser?.favorites && followedUser?.favorites?.length > 0){
-            followedUsersWithFavorites.push(followedUser)
-        }
-    }
+    const followedUsersWithFavorites = await User.find({ _id: { $in: user.followedUsers},
+        $where: "this.favorites.length > 0"}).populate({
+        path: 'favorites',
+        populate: {
+            path: 'type',
+            model: 'Category'
+        },
+        model: 'Favorite'
+    });
 
     //Kein FollowedUser hat Favoriten
     if (!followedUsersWithFavorites || followedUsersWithFavorites.length === 0) {
@@ -263,7 +257,7 @@ userController.createUser = createUser;
 userController.getOneUser = getOneUser;
 userController.updateUser = updateUser;
 
-userController.getFollowedUsersFavorites = getFollowedUsersFavorites;
+userController.getFollowedUsersWithFavorites = getFollowedUsersWithFavorites;
 userController.addFollowedUser = addFollowedUser;
 userController.deleteFollowedUser = deleteFollowedUser;
 
