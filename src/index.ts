@@ -9,6 +9,7 @@ import categoryRouter from './routers/CategoryRouter';
 import favoriteRouter from "./routers/FavoriteRouter";
 import passport from "./config/passport";
 import authRouter from "./routers/AuthRouter";
+import spotifyRouter from "./routers/SpotifyRouter";
 
 const port = process.env.SWE_BACKEND_PORT || 5000;
 const corsOptions = {
@@ -32,6 +33,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/users", userRouter);
 app.use("/api/categories", categoryRouter);
 app.use("/api/favorites", favoriteRouter);
+app.use("/api/spotify", spotifyRouter);
 
 app.listen(port, () => {
     console.log(`Now listening on port ${port}`);

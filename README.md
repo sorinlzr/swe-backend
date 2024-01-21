@@ -41,7 +41,13 @@ MONGO_DB_COLLECTION         - the initial collection inside the database specifi
 MONGOEXPRESS_LOGIN          - the user for the UI interface login
 MONGOEXPRESS_PASSWORD       - the password for the UI interface login
 MONGOEXPRESS_PORT           - the port where to access the web UI interface
+SPOTIFY_CLIENT_ID           - the spotity client ID for the Spotify API
+SPOTIFY_CLIENT_SECRET       - the spotity client secret for the Spotify API
 ```
+
+#### Spotify API
+For the Spotify API Client ID and Client Secret see the documentation [Spotify API](https://developer.spotify.com/documentation/web-api)
+
 Open a terminal in the repository root directory and run 
 ```
 docker compose up
