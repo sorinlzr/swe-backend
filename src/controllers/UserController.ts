@@ -155,7 +155,7 @@ const getFollowedUsersWithFavorites = asyncHandler(async (req, res, next) => {
 
     // Ich folge niemandem.
     if(!user?.followedUsers || user?.followedUsers.length === 0){
-        res.status(404).json({ error: "Current User is not following anyone." });
+        res.status(204).json({ message: "Current User is not following anyone." });
         return;
     } 
     
