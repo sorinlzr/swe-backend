@@ -6,7 +6,9 @@ interface SpotifyController {
     getArtists?: any;
     spotifyTokenType?: string;
     spotifyAccessToken?: string;
-    createSpotifyAccessToken?: () => Promise<void>; // Specify Promise type
+    tokenExpiresIn?: any;
+    tokenCreationTime?: number;
+    createSpotifyAccessToken?: () => Promise<void>; 
 }
 
 const spotifyController: SpotifyController = {};
@@ -23,23 +25,30 @@ spotifyController.createSpotifyAccessToken = async () => {
                 Authorization: "Basic " + Buffer.from(client_id + ":" + client_secret).toString("base64"),
                 "Content-Type": "application/x-www-form-urlencoded",
             },
-            data: "grant_type=client_credentials", // Use a URL-encoded string
+            data: "grant_type=client_credentials", 
         };
 
         const response = await axios.post(authOptions.url, authOptions.data, { headers: authOptions.headers });
 
         spotifyController.spotifyTokenType = response.data.token_type;
         spotifyController.spotifyAccessToken = response.data.access_token;
+        spotifyController.tokenCreationTime = Date.now();
+        spotifyController.tokenExpiresIn = response.data.expires_in;
     } catch (error) {
         console.error('createSpotifyAccessToken failed:', error);
     }
 };
 
-spotifyController.createSpotifyAccessToken(); // Call the async function
+spotifyController.createSpotifyAccessToken(); 
 
 const getSongs = asyncHandler(async (req, res) => {
     try {
         console.debug("searching: ", req.query.searchText);
+
+        if (spotifyController.tokenCreationTime && Date.now() > spotifyController.tokenCreationTime + spotifyController.tokenExpiresIn * 1000) {
+            console.debug("Spotify access token is expired, creating a new one")
+            await spotifyController.createSpotifyAccessToken?.();
+        }
 
         let url = "https://api.spotify.com/v1/search?q=";
         let searchText = req.query.searchText;
@@ -73,6 +82,11 @@ const getSongs = asyncHandler(async (req, res) => {
 const getArtists = asyncHandler(async (req, res) => {
     try {
         console.debug("searching: ", req.query.searchText);
+
+        if (spotifyController.tokenCreationTime && Date.now() > spotifyController.tokenCreationTime + spotifyController.tokenExpiresIn * 1000) {
+            console.debug("Spotify access token is expired, creating a new one")
+            await spotifyController.createSpotifyAccessToken?.();
+        }
 
         let url = "https://api.spotify.com/v1/search?q=";
         let searchText = req.query.searchText;
