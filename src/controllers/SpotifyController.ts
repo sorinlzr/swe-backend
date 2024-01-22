@@ -1,121 +1,110 @@
 import asyncHandler from "express-async-handler";
-import { XMLHttpRequest } from "xmlhttprequest-ts";
+import axios from "axios";
 
 interface SpotifyController {
     getSongs?: any;
     getArtists?: any;
-    spotifyTokenType? : any;
-    spotifyAccessToken? : any;
-    createSpotifyAccessToken? : any;
+    spotifyTokenType?: string;
+    spotifyAccessToken?: string;
+    createSpotifyAccessToken?: () => Promise<void>; // Specify Promise type
 }
 
 const spotifyController: SpotifyController = {};
 
-function createSpotifyAccessToken () {
-    const client_id = process.env.SPOTIFY_CLIENT_ID;
-    const client_secret = process.env.SPOTIFY_CLIENT_SECRET;
+spotifyController.createSpotifyAccessToken = async () => {
+    console.debug("creating spotify access token");
+    try {
+        const client_id = process.env.SPOTIFY_CLIENT_ID;
+        const client_secret = process.env.SPOTIFY_CLIENT_SECRET;
 
-    let authOptions = {
-        url: "https://accounts.spotify.com/api/token",
-        headers: {
-        Authorization: "Basic " + btoa(client_id + ":" + client_secret),
-        },
-        form: {
-        grant_type: "client_credentials",
-        },
-        json: true,
-    };
+        const authOptions = {
+            url: "https://accounts.spotify.com/api/token",
+            headers: {
+                Authorization: "Basic " + Buffer.from(client_id + ":" + client_secret).toString("base64"),
+                "Content-Type": "application/x-www-form-urlencoded",
+            },
+            data: "grant_type=client_credentials", // Use a URL-encoded string
+        };
 
-    const xhr = new XMLHttpRequest();
-    xhr.onload = function () {
-        let response = JSON.parse(xhr.responseText);
-        spotifyController.spotifyTokenType = response.token_type;
-        spotifyController.spotifyAccessToken = response.access_token;
-    };
+        const response = await axios.post(authOptions.url, authOptions.data, { headers: authOptions.headers });
 
-    const url = "https://accounts.spotify.com/api/token";
-    xhr.open("POST", authOptions.url);
-    xhr.setRequestHeader("Authorization", authOptions.headers.Authorization);
-    xhr.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
-
-    var formData = [];
-    for (var key in authOptions.form) {
-        var encodedKey = encodeURIComponent(key);
-        var encodedValue = encodeURIComponent(authOptions.form[key as keyof typeof authOptions.form]);
-        formData.push(encodedKey + "=" + encodedValue);
+        spotifyController.spotifyTokenType = response.data.token_type;
+        spotifyController.spotifyAccessToken = response.data.access_token;
+    } catch (error) {
+        console.error('createSpotifyAccessToken failed:', error);
     }
-    var requestBody = formData.join("&");
-
-    xhr.send(requestBody);
-
 };
 
-createSpotifyAccessToken();
-
-
+spotifyController.createSpotifyAccessToken(); // Call the async function
 
 const getSongs = asyncHandler(async (req, res) => {
-    
-    let url = "https://api.spotify.com/v1/search?q=";
-    let searchText = req.query.searchText;
-    let searchparamsURIEncoded = "&type=track&market=AT&limit=5";
-  
-    if (!searchText) {
-        res.status(404).json({ error: "No search text provided" });
-        return;
-    }
+    try {
+        console.debug("searching: ", req.query.searchText);
 
-    let finalURL =
-      url + encodeURIComponent(searchText.toString()) + searchparamsURIEncoded;
-    let xhr = new XMLHttpRequest();
-    xhr.onload = function () {
-        let response = JSON.parse(xhr.responseText);
-        let tracks = [];
-        for(let item of response.tracks.items) {
-            tracks.push({
-                name: item?.name + " - " + item?.artists[0]?.name,
-                image: item?.album?.images[0]?.url
-            });
+        let url = "https://api.spotify.com/v1/search?q=";
+        let searchText = req.query.searchText;
+        let searchparamsURIEncoded = "&type=track&market=AT&limit=5";
+
+        if (!searchText) {
+            res.status(404).json({ error: "No search text provided" });
+            return;
         }
-        res.status(200).json( tracks);
-    };
-    xhr.open("GET", finalURL);
-    xhr.setRequestHeader("Authorization", spotifyController.spotifyTokenType + " " + 
-    spotifyController.spotifyAccessToken);
-    xhr.send();
 
+        let finalURL =
+            url + encodeURIComponent(searchText.toString()) + searchparamsURIEncoded;
+        const response = await axios.get(finalURL, {
+            headers: {
+                Authorization: spotifyController.spotifyTokenType + " " + spotifyController.spotifyAccessToken,
+            },
+        });
+
+        let songs = response.data.tracks.items.map((item: any) => ({
+            name: item?.name,
+            image: item?.album?.images[0]?.url,
+        }));
+
+        res.status(200).json(songs);
+    } catch (error) {
+        console.error('getSongs failed:', error);
+        res.status(500).json({ error: 'An error occurred while fetching songs' });
+    }
 });
 
 const getArtists = asyncHandler(async (req, res) => {
+    try {
+        console.debug("searching: ", req.query.searchText);
 
-    let url = "https://api.spotify.com/v1/search?q=";
-    let searchText = req.query.searchText;
-    let searchparamsURIEncoded = "&type=artist&market=AT&limit=5";
-  
-    if (!searchText) {
+        let url = "https://api.spotify.com/v1/search?q=";
+        let searchText = req.query.searchText;
+        let searchparamsURIEncoded = "&type=artist&market=AT&limit=5";
+
+        if (!searchText) {
             res.status(404).json({ error: "No search text provided" });
             return;
-    }
-
-    let finalURL =
-        url + encodeURIComponent(searchText.toString()) + searchparamsURIEncoded;
-    let xhr = new XMLHttpRequest();
-    xhr.onload = function () {
-        let response = JSON.parse(xhr.responseText);
-        let artists = [];
-        for(let item of response.artists.items) {
-            artists.push({
-                name: item?.name,
-                image: item?.images[0]?.url
-            });
         }
-        res.status(200).json( artists);
-    };
-    xhr.open("GET", finalURL);
-    xhr.setRequestHeader("Authorization", spotifyController.spotifyTokenType + " " + 
-    spotifyController.spotifyAccessToken);
-    xhr.send();
 
+        let finalURL =
+            url + encodeURIComponent(searchText.toString()) + searchparamsURIEncoded;
+
+        const response = await axios.get(finalURL, {
+            headers: {
+                Authorization: spotifyController.spotifyTokenType + " " + spotifyController.spotifyAccessToken,
+            },
+        }).catch(error => {
+            console.error('Axios error:', error.response.data);
+            throw error;
+        });
+
+        let artists = response.data.artists.items.map((item: any) => ({
+            name: item?.name,
+            image: item?.images[0]?.url,
+        }));
+
+        res.status(200).json(artists);
+    } catch (error) {
+        console.error('getArtists failed:', error);
+        res.status(500).json({ error: 'An error occurred while fetching artists' });
+    }
 });
 
 spotifyController.getSongs = getSongs;
