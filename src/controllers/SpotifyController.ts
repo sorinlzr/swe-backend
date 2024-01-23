@@ -68,7 +68,7 @@ const getSongs = asyncHandler(async (req, res) => {
         });
 
         let songs = response.data.tracks.items.map((item: any) => ({
-            name: item?.name,
+            name: item?.name + " - " + item?.artists[0]?.name,
             image: item?.album?.images[0]?.url,
         }));
 
