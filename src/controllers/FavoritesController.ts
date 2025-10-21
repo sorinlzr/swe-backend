@@ -4,6 +4,9 @@ import Favorite from '../models/Favorite';
 import { CategoryModel } from '../models/Category';
 import User from '../models/User';
 import { getUserIdFromJwtToken } from './AuthController';
+import createLogger from '../utils/logger.js';
+
+const logger = createLogger('FavoritesController');
 
 interface FavoriteController {
     getFavorites?: any;
@@ -14,8 +17,12 @@ interface FavoriteController {
 
 const favoriteController: FavoriteController = {};
 
-const createFavorite = asyncHandler(async (req, res) => {
+const createFavorite = asyncHandler(async (req, res, next) => {
     try {
+        if (!req.body || !req.body.name || String(req.body.name).trim() === '') {
+            res.status(400).json({ error: 'Name is required' });
+            return;
+        }
         const category = await CategoryModel.findOne({ "name": capitalizeFirstLetter(String(req.body.type)) });
         if (!category) {
             res.status(404);
@@ -49,7 +56,7 @@ const createFavorite = asyncHandler(async (req, res) => {
                 await user.save();
 
                 const payload: ResponseBody = {
-                    id: favorite._id,
+                    id: favorite._id.toString(),
                     name: favorite.name,
                     type: category.name.toString(),
                     coverArtUrl: favorite.coverArtUrl
@@ -58,8 +65,8 @@ const createFavorite = asyncHandler(async (req, res) => {
             }
         }
     } catch (error: any) {
-        console.error(`Could not create the favorite with the specified data ${req.body}\n`, error);
-        res.status(404).json({ error: "Could not create the favorite with the specified data. Please check your input" });
+        logger.error(`Could not create the favorite with the specified data ${JSON.stringify(req.body)}\n`, error);
+        return next(error);
     }
 });
 
@@ -82,15 +89,15 @@ const deleteFavorite = asyncHandler(async (req, res) => {
                 user.favorites?.splice(index!, 1);
                 await user.save();
             } else {
-                console.error("Could not remove the favorite from the user. The Favorite was not found in the favorites list of the user, this should not happen");
+                logger.error("Could not remove the favorite from the user. The Favorite was not found in the favorites list of the user, this should not happen");
             }
-            console.log("Deleted Favorite: ", favorite);
+            logger.info("Deleted Favorite: ", favorite);
             res.status(204).send();
         } else {
             res.status(400).json({ error: "Could not delete the favorite with the specified data. Please check your input" });
         }
     } catch (error: any) {
-        console.error(`Could not delete the favorite with id ${req.query.id}\n`, error);
+        logger.error(`Could not delete the favorite with id ${req.query.id}\n`, error);
         res.status(404).json({ error: "Could not delete the favorite with the specified id. Id does not exist" });
     }
 });
@@ -109,7 +116,7 @@ const getFavorites = asyncHandler(async (req, res) => {
             }
         } else if (req.query.id) {
             const document = await Favorite.findById(req.query.id);
-            console.log(document);
+            logger.info(document);
             if (!document) {
                 res.status(404).json({ error: "Could not find the favorite with the specified id" });
             }
@@ -124,7 +131,7 @@ const getFavorites = asyncHandler(async (req, res) => {
             res.status(200).json({ size, data: document });
         }
     } catch (error: any) {
-        console.error(`Could not retrieve the favorites\n`, error);
+        logger.error(`Could not retrieve the favorites\n`, error);
         res.status(404).json({ error: "Could not retrieve the favorites" });
     }
 
@@ -155,7 +162,7 @@ const updateFavorite = asyncHandler(async (req, res) => {
                     favorite.coverArtUrl = req.body.coverArtUrl ? req.body.coverArtUrl : favorite.coverArtUrl;
                     favorite.user = user?._id;
                     await favorite.save();
-                    console.log("Updated Favorite: ", favorite);
+                    logger.info("Updated Favorite: ", favorite);
 
                     res.status(200).json({ data: favorite });
                 } else {
@@ -165,11 +172,11 @@ const updateFavorite = asyncHandler(async (req, res) => {
                 res.status(400).json({ error: "Cannot update the type of the favorite." });
             }
         } else {
-            console.log("Cannot update Favorites of other users.")
+            logger.info("Cannot update Favorites of other users.")
             res.status(404).json({ error: "Could not find the favorite with the specified id" });
         }
     } catch (error: any) {
-        console.error(`Could not update the favorite with id ${req.params.id}\n`, error);
+        logger.error(`Could not update the favorite with id ${req.params.id}\n`, error);
         res.status(404).json({ error: "Could not update the favorite with the specified id. Please check your input" });
     }
 });

@@ -3,6 +3,9 @@ import { IUser as ResponseBody} from '../interfaces/IUser.js';
 
 import { Request, Response } from "express";
 import asyncHandler from 'express-async-handler';
+import createLogger from '../utils/logger.js';
+
+const logger = createLogger('UserController');
 import { getUserIdFromJwtToken } from './AuthController';
 
 interface UserController {
@@ -22,13 +25,13 @@ const createUser = asyncHandler(async (req: Request, res: Response) => {
     try {
         const existingUser = await User.findOne({ $or: [{ username }, { email }] });
         if (existingUser) {
-            console.error(`Error creating user. There is already an user with the same email or username\n`);
+            logger.error(`Error creating user. There is already an user with the same email or username\n`);
             res.status(400).json({ error: "There is already an user with the same email or username" });
         } else {
             const newDoc = await User.create(req.body);
 
             const payload: ResponseBody = {
-                id: newDoc._id,
+                id: newDoc._id.toString(),
                 username: newDoc.username,
                 firstname: newDoc.firstname,
                 lastname: newDoc.lastname,
@@ -38,7 +41,7 @@ const createUser = asyncHandler(async (req: Request, res: Response) => {
             res.status(201).json({ data: payload });
         }
     } catch (error: any) {
-        console.error(`There was a problem creating the user\n`, error);
+        logger.error(`There was a problem creating the user\n`, error);
         res.status(400).json({ error: "There was a problem creating the user. Please check your input" });
     }
 });
@@ -54,7 +57,7 @@ const getUsers = asyncHandler(async (req, res, next) => {
     });;
 
     const users: ResponseBody[] = document.map(doc => ({
-        id: doc._id,
+        id: doc._id.toString(),
         username: doc.username,
         firstname: doc.firstname,
         lastname: doc.lastname,
@@ -79,7 +82,7 @@ const getOneUser = asyncHandler(async (req, res, next) => {
         res.status(404).json({ error: "User not found" });
     } else {
         const user: ResponseBody = {
-            id: document._id,
+            id: document._id.toString(),
             username: document.username,
             firstname: document.firstname,
             lastname: document.lastname,
@@ -113,7 +116,7 @@ const updateUser = asyncHandler(async (req, res, next) => {
         if (req.body.username) {
             const existingUser = await User.findOne({ "username": req.body.username });
             if (existingUser) {
-                console.error(`Error creating user. There is already an user with the same username\n`);
+                logger.error(`Error creating user. There is already an user with the same username\n`);
                 res.status(400).json({ error: "There is already an user with the same username" });
             } else {
                 user.username = req.body.username;
@@ -125,7 +128,7 @@ const updateUser = asyncHandler(async (req, res, next) => {
         if (req.body.email) {
             const existingUser = await User.findOne({ "email": req.body.email });
             if (existingUser) {
-                console.error(`Error creating user. There is already an user with the same email\n`);
+                    logger.error(`Error creating user. There is already an user with the same email\n`);
                 res.status(400).json({ error: "There is already an user with the same email" });
             } else {
                 user.email = req.body.email;
@@ -153,13 +156,11 @@ const getFollowedUsersWithFavorites = asyncHandler(async (req, res, next) => {
         throw new Error("Current User not found? - Should no be possible!");
     }
 
-    // Ich folge niemandem.
     if(!user?.followedUsers || user?.followedUsers.length === 0){
         res.status(204).json({ message: "Current User is not following anyone." });
         return;
     } 
     
-    // Kontrolle, ob FollowedUsers Favoriten haben
     const followedUsersWithFavorites = await User.find({ _id: { $in: user.followedUsers},
         $where: "this.favorites.length > 0"}).populate({
         path: 'favorites',
@@ -170,15 +171,13 @@ const getFollowedUsersWithFavorites = asyncHandler(async (req, res, next) => {
         model: 'Favorite'
     });
 
-    //Kein FollowedUser hat Favoriten
     if (!followedUsersWithFavorites || followedUsersWithFavorites.length === 0) {
         res.status(204).json({message : "None of the followed Users has Favorites."});
         return;
     }
 
-    // Daten zurückliefern
     const usersWithFavorites: ResponseBody[] = followedUsersWithFavorites.map(user => ({
-        id: user._id,
+        id: user._id.toString(),
         username: user.username,
         firstname: user.firstname,
         lastname: user.lastname,

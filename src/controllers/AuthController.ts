@@ -7,34 +7,42 @@ import asyncHandler from "express-async-handler"
 import User from "../models/User.js";
 import { IUser as ResponseBody} from '../interfaces/IUser.js';
 import { CookieOptions, Request, Response, NextFunction } from "express";
+import createLogger from '../utils/logger.js';
+
+const logger = createLogger('AuthController');
 
 const TOKEN = "swe-backend-cookie";
 
 export const login = asyncHandler(async (req, res, next): Promise<void> => {
     try {
+        logger.debug("Login attempt");
         const username = req.body.username;
         const password = req.body.password;
 
         if (!username || !password) {
             res.status(400).json({ error: 'All fields are required' });
+            return;
         }
 
         const user = await User.findOne({ username });
 
         if (!user) {
             res.status(404).json({ error: "Username not found" });
+            return;
         } else {
-            console.log("user found");
+            logger.debug("user found");
 
             const auth = await bcrypt.compare(password, user.password)
             if (!auth) {
+                logger.warn("Incorrect password");
                 res.status(401).json({ error: 'Incorrect password' })
+                return;
             }
 
-            console.log("Matching password");
+            logger.debug("Matching password");
 
             const payload: ResponseBody = {
-                id: user._id,
+                id: user._id.toString(),
                 username: user.username,
                 firstname: user.firstname,
                 lastname: user.lastname,
@@ -43,13 +51,13 @@ export const login = asyncHandler(async (req, res, next): Promise<void> => {
 
             // Sign token
             const token = createSecretToken(payload);
-            console.debug("created token");
+            logger.debug("created token");
 
             const maxAge = Number(process.env.JWT_MAX_AGE) * 1000 || 3600000;
             const cookieOptions: CookieOptions = {
-                httpOnly: false,
-                secure: false,
-                domain: "localhost",
+                httpOnly: process.env.NODE_ENV === 'production',
+                secure: process.env.NODE_ENV === 'production',
+                domain: process.env.NODE_ENV === 'production' ? undefined : 'localhost',
                 sameSite: "lax",
                 path: "/",
                 maxAge: maxAge
@@ -63,8 +71,8 @@ export const login = asyncHandler(async (req, res, next): Promise<void> => {
 
 
     } catch (error) {
-        console.log("Error during login");
-        console.error(error);
+        logger.debug("Error during login", error);
+        return next(error);
     }
 });
 
@@ -75,8 +83,7 @@ export const logout = asyncHandler(async (req, res, next) => {
 
         res.status(200).json({ message: 'Logged out successfully' });
     } catch (error) {
-        console.log("Error during logout");
-        console.error(error);
+        logger.error("Error during logout", error);
     }
 });
 
@@ -85,7 +92,7 @@ export const validateToken = (req: Request, res: Response, next: NextFunction) =
     const token: string = req.cookies[TOKEN];
     
     if (!token) {
-        console.log("Invalid token");
+        logger.debug("Invalid token");
         // Token is missing, return unauthorized
         return res.status(401).send('Unauthorized');
     }
@@ -99,7 +106,7 @@ export const validateToken = (req: Request, res: Response, next: NextFunction) =
         jwt.verify(token, jwtSecret, (err: any) => {
             if (err) {
                 // Token is invalid or expired
-                console.log("Token is invalid or expired");
+                logger.debug("Token is invalid or expired");
                 return res.status(401).send('Unauthorized');
             }
             // Token is valid, proceed to the next middleware
@@ -109,13 +116,14 @@ export const validateToken = (req: Request, res: Response, next: NextFunction) =
 };
 
 export const getUserIdFromJwtToken = (req: Request) => {
-    console.debug("Getting user id from jwt token")
+    logger.debug("Getting user id from jwt token")
     const jwtSecret = process.env.JWT_SECRET || '';
     try {
         const jwtPayload = jwt.verify(req.cookies[TOKEN], jwtSecret) as ResponseBody;
         return jwtPayload?.id;
     }
     catch (error) {
+        logger.debug("Failed to get user id from token", error);
         return null;
     }
 }

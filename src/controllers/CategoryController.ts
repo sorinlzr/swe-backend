@@ -1,5 +1,8 @@
 import { CategoryModel } from "../models/Category";
 import asyncHandler from "express-async-handler";
+import createLogger from '../utils/logger.js';
+
+const logger = createLogger('CategoryController');
 
 interface CategoryController {
     getCategories?: any;
@@ -18,8 +21,9 @@ const getCategories = asyncHandler(async (req, res) => {
     } else {
         document = await CategoryModel.find();
         if (!document || document.length === 0) {
-            res.status(404);
-            throw new Error("No categories found");
+            logger.warn('No categories found');
+            res.status(200).json({ size: 0, data: [] });
+            return;
         }
     }
     const size = Array.isArray(document) ? document.length : 1;
