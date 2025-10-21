@@ -6,7 +6,7 @@ services:
     volumes:
       - mongo_data:/data/db
     networks:
-      - express-mongo
+      - mongo
     ports:
       - ${MONGO_PORT}:27017
     environment:
@@ -33,10 +33,10 @@ services:
     ports:
       - "${MONGOEXPRESS_PORT}:${MONGOEXPRESS_PORT}"
     networks:
-      - express-mongo
+      - mongo
 
 networks:
-  express-mongo:
+  mongo:
 
 volumes:
   mongo_data:
