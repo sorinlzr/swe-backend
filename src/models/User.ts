@@ -1,8 +1,7 @@
-import mongoose, { Schema, Types, Document } from 'mongoose';
-import axios from 'axios';
+import mongoose, { Schema, Types, Document, ObjectId } from 'mongoose';
 import bcrypt from 'bcrypt';
 
-export interface IUser extends Document {
+interface IUser extends Document<ObjectId> {
     firstname: string;
     lastname: string;
     username: string;
@@ -21,7 +20,7 @@ const userSchema = new Schema<IUser>({
     password: { type: String, required: true },
     avatar: { type: String, required: false },
     followedUsers: [{ type: Schema.Types.ObjectId, ref: 'User' }],
-    favorites: [{ type: Schema.Types.ObjectId, ref: 'Favorites' }],
+    favorites: [{ type: Schema.Types.ObjectId, ref: 'Favorite' }],
 });
 
 userSchema.pre('save', async function (this: IUser, next: Function) {
@@ -30,7 +29,7 @@ userSchema.pre('save', async function (this: IUser, next: Function) {
         this.password = await bcrypt.hash(this.password, salt);
     }
     if (!this.avatar) {
-        const lockNumber = () => Math.floor(Math.random() * 99999) + 1;
+        const lockNumber = () => Math.floor(Math.random() * 100) + 1;
         const avatarUrl = await generateRandomUserAvatar(lockNumber());
         this.avatar = avatarUrl;
     }
@@ -42,18 +41,8 @@ userSchema.methods.validatePassword = async function (passwordTry: string) {
   };
 
 async function generateRandomUserAvatar(lockNumber: number): Promise<string> {
-    try {
-        const url = `https://loremflickr.com/640/480/people?lock=${lockNumber}`;
-        const response = await axios.get(url);
-        const responseUrl = response.request.res.responseUrl;
-        return responseUrl;
-    } catch (error) {
-        if (error instanceof Error) {
-            throw new Error(`Network Error: ${error.message}`);
-        } else {
-            throw error;
-        }
-    }
+    const url = `https://avatar.iran.liara.run/public/${lockNumber}`;
+    return url;
 }
 
 const User = mongoose.model<IUser>("User", userSchema);

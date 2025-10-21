@@ -1,6 +1,6 @@
-import mongoose, { Document, Schema } from "mongoose";
+import mongoose, { Document, ObjectId, Schema } from "mongoose";
 
-export interface IFavorite extends Document {
+interface IFavorite extends Document<ObjectId> {
     type: Schema.Types.ObjectId;
     name: string;
     coverArtUrl?: string;
