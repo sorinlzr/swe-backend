@@ -58,3 +58,22 @@ The MongoDB service will create a directory `.db` where it stores the database.<
 The MongoExpress UI takes some time until it can connect to the database service.<br>
 <br>
 Once you start the application, the `mongoose.connect()` function is called from the `dbconnection.ts` file. This will create the database connection that will be used when the application will save documents to the database. More info in the [Mongoose documentation](https://mongoosejs.com/docs/api/mongoose.html#Mongoose.prototype.connect())
+
+## Logging and LOG_LEVEL
+
+This project includes a small utility logger which prefixes messages with an ISO timestamp, log level and the component name (for example: `[2025-10-21T18:23:21.123Z] [INFO] [AuthController] User logged in`).
+
+Control the minimum log level using the `LOG_LEVEL` environment variable. Valid values: `debug`, `info`, `warn`, `error`.
+
+- Default when `NODE_ENV=production`: `info`
+- Default otherwise: `debug`
+
+Examples:
+
+```bash
+# show info and above
+LOG_LEVEL=info npm run start
+
+# show debug logs (development)
+LOG_LEVEL=debug npm run dev
+```
