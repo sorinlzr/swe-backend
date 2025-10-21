@@ -1,11 +1,10 @@
-version: '3'
-
 services:
   mongo:
-    image: mongo:4.4.20-rc0
+    image: mongo:8.0.15
+    container_name: mongo
     restart: always
     volumes:
-      - ./db:/data/db
+      - mongo_data:/data/db
     networks:
       - express-mongo
     ports:
@@ -14,8 +13,10 @@ services:
       - MONGO_INITDB_DATABASE=${MONGO_DB_NAME}
       - MONGO_INITDB_ROOT_USERNAME=${MONGO_ROOT_USER}
       - MONGO_INITDB_ROOT_PASSWORD=${MONGO_ROOT_PASSWORD}
+    # command: ["mongod", "--bind_ip_all"]
         
   mongo-express:
+    container_name: mongo-express
     image: mongo-express:1.0.0-20
     restart: always
     depends_on:
@@ -36,3 +37,6 @@ services:
 
 networks:
   express-mongo:
+
+volumes:
+  mongo_data:
