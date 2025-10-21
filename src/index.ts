@@ -4,12 +4,16 @@ import cors from "cors";
 import bodyParser from 'body-parser';
 import cookieParser from 'cookie-parser';
 import { connectToDatabase, initializeCategories } from './config/dbconnection';
+import { provisionSampleData, resetDatabase } from './config/dbprovsion';
 import userRouter from './routers/userRouter';
 import categoryRouter from './routers/CategoryRouter';
 import favoriteRouter from "./routers/FavoriteRouter";
 import passport from "./config/passport";
 import authRouter from "./routers/AuthRouter";
 import spotifyRouter from "./routers/SpotifyRouter";
+import createLogger from './utils/logger';
+
+const logger = createLogger('Server');
 
 const port = process.env.SWE_BACKEND_PORT || 5000;
 const corsOptions = {
@@ -35,13 +39,33 @@ app.use("/api/categories", categoryRouter);
 app.use("/api/favorites", favoriteRouter);
 app.use("/api/spotify", spotifyRouter);
 
+// global error handler
+app.use((err: any, req: any, res: any, next: any) => {
+    logger.error('Unhandled error:', err);
+    if (res.headersSent) {
+        return next(err);
+    }
+    res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
+});
+
 app.listen(port, () => {
-    console.log(`Now listening on port ${port}`);
+    logger.info(`Now listening on port ${port}`);
 });
 
 async function main() {
-    connectToDatabase();
-    initializeCategories();
+    await connectToDatabase();
+    
+    if (process.env.PROVISION_CLEAN_DB) {
+        logger.warn('PROVISION_CLEAN_DB is set - the database will be reset before provisioning');
+        await resetDatabase();
+    }
+    
+    await initializeCategories();
+
+    if (process.env.PROVISION_SAMPLE_DATA) {
+        logger.info('PROVISION_SAMPLE_DATA is set, running sample data provisioning');
+        await provisionSampleData();
+    }
 }
 
 main();
