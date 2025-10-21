@@ -12,6 +12,7 @@ import passport from "./config/passport";
 import authRouter from "./routers/AuthRouter";
 import spotifyRouter from "./routers/SpotifyRouter";
 import createLogger from './utils/logger';
+import mongoose from 'mongoose';
 
 const logger = createLogger('Server');
 
@@ -48,9 +49,39 @@ app.use((err: any, req: any, res: any, next: any) => {
     res.status(err.status || 500).json({ error: err.message || 'Internal server error' });
 });
 
-app.listen(port, () => {
+const server = app.listen(port, () => {
     logger.info(`Now listening on port ${port}`);
 });
+
+const shutdown = async (signal?: string) => {
+    try {
+        logger.info(`Received ${signal || 'shutdown'} signal. Stopping server...`);
+        // stop accepting new connections
+        await new Promise<void>((resolve, reject) => {
+            server.close(err => {
+                if (err) return reject(err);
+                resolve();
+            });
+        });
+
+        
+        if (mongoose.connection && mongoose.connection.readyState !== 0) {
+            logger.info('Closing DB connection...');
+            await mongoose.disconnect();
+        }
+
+        logger.info('Shutdown complete. Exiting process.');
+        process.exit(0);
+    } catch (err: any) {
+        logger.error('Error during shutdown:', err);
+        process.exit(1);
+    }
+};
+
+if (process.env.NODE_ENV === 'production') {
+    process.on('SIGINT', () => shutdown('SIGINT'));
+    process.on('SIGTERM', () => shutdown('SIGTERM'));
+}
 
 async function main() {
     await connectToDatabase();
