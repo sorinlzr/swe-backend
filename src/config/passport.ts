@@ -4,6 +4,9 @@ dotenv.config({ path: '/.env' })
 import passport from "passport";
 import { Strategy as JwtStrategy, ExtractJwt } from "passport-jwt";
 import User from "../models/User.js";
+import createLogger from '../utils/logger.js';
+
+const logger = createLogger('Passport');
 
 const opts: any = {};
 
@@ -19,7 +22,7 @@ passport.use(
         }
         return done(null, false);
       })
-      .catch(err => console.log(err));
+      .catch(err => logger.error(err));
   })
 );
 
